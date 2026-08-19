@@ -1,0 +1,28 @@
+name: release
+
+# Publishes a GitHub release when a version tag is pushed. Tests are NOT re-run
+# here -- they already ran on the branch the tag points at (see tests.yml).
+# Only tag a commit whose checks were green.
+on:
+  push:
+    tags:
+      - 'v*'
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v3
+        with:
+          generate_release_notes: true
+          fail_on_unmatched_files: false

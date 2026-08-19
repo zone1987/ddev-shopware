@@ -1,4 +1,4 @@
-[![tests](https://github.com/zone1987/ddev-shopware/actions/workflows/tests.yml/badge.svg?branch=main)](https://github.com/zone1987/ddev-shopware/actions/workflows/tests.yml?query=branch%3Amain)
+[![tests](https://github.com/zone1987/ddev-shopware/actions/workflows/tests.yml/badge.svg?branch=6.7)](https://github.com/zone1987/ddev-shopware/actions/workflows/tests.yml?query=branch%3A6.7)
 [![last commit](https://img.shields.io/github/last-commit/zone1987/ddev-shopware)](https://github.com/zone1987/ddev-shopware/commits)
 [![release](https://img.shields.io/github/v/release/zone1987/ddev-shopware)](https://github.com/zone1987/ddev-shopware/releases/latest)
 
@@ -52,20 +52,21 @@ ports. Commit the `.ddev` directory to version control afterwards.
 
 ### Installing a specific Shopware line
 
-Shopware's build tooling changes between minor versions, so this add-on is maintained in branches
-per Shopware line. Install the branch that matches your shop:
+Shopware's build tooling changes between minor versions, so this add-on is maintained in one branch
+per Shopware line — there is no `main`. The plain install command above resolves to the default
+branch, currently `6.7`.
+
+To install a specific line explicitly:
 
 ```bash
 ddev add-on get https://github.com/zone1987/ddev-shopware/tarball/6.7
 ```
 
-Or pin an exact release:
+Or pin an exact release, so a later change to the branch cannot surprise you:
 
 ```bash
 ddev add-on get https://github.com/zone1987/ddev-shopware/tarball/v6.7.0
 ```
-
-`main` tracks the current Shopware line.
 
 ## Usage
 
