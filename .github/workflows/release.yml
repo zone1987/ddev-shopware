@@ -1,12 +1,12 @@
 name: release
 
-# Publishes a GitHub release when a version tag is pushed. Tests are NOT re-run
+# Publishes a GitHub release when a version tag (e.g. v6.7.0) is pushed. Tests are NOT re-run
 # here -- they already ran on the branch the tag points at (see tests.yml).
 # Only tag a commit whose checks were green.
 on:
   push:
     tags:
-      - 'v*'
+      - 'v[0-9]*'
 
 concurrency:
   group: release-${{ github.ref }}

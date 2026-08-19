@@ -53,20 +53,22 @@ ports. Commit the `.ddev` directory to version control afterwards.
 ### Installing a specific Shopware line
 
 Shopware's build tooling changes between minor versions, so this add-on is maintained in one branch
-per Shopware line — there is no `main`. The plain install command above resolves to the default
-branch, currently `6.7`.
+per Shopware line — there is no `main`. The command above installs the latest release, which tracks
+the current line.
 
-To install a specific line explicitly:
-
-```bash
-ddev add-on get https://github.com/zone1987/ddev-shopware/tarball/6.7
-```
-
-Or pin an exact release, so a later change to the branch cannot surprise you:
+Pin an exact release so a later change cannot surprise you:
 
 ```bash
-ddev add-on get https://github.com/zone1987/ddev-shopware/tarball/v6.7.0
+ddev add-on get zone1987/ddev-shopware --version v6.7.0
 ```
+
+Or follow a line's branch to always get its newest state:
+
+```bash
+ddev add-on get zone1987/ddev-shopware --version 6.7
+```
+
+Releases are versioned `v<shopware-line>.<patch>` — `v6.7.0`, `v6.7.1`, … all target Shopware 6.7.
 
 ## Usage
 
