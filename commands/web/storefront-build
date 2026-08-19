@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+#ddev-generated
+
+## Description: Build Shopware Storefront
+## Usage: storefront-build [static|plugin] [plugins...]
+## Example: "ddev storefront-build" or "ddev storefront-build static" or "ddev storefront-build plugin SwagPluginA"
+
+exec "$(dirname "$0")/.shopware-cli-command" storefront-build "$@"

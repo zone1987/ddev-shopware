@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+#ddev-generated
+
+## Description: Start Shopware Storefront watcher
+## Usage: storefront-watch [static|plugin] [plugins...]
+## Example: "ddev storefront-watch" or "ddev storefront-watch static" or "ddev storefront-watch plugin SwagPluginA"
+
+exec "$(dirname "$0")/.shopware-cli-command" storefront-watch "$@"

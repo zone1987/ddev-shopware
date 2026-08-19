@@ -1,0 +1,160 @@
+#!/usr/bin/env bash
+#ddev-generated
+
+## Shared implementation behind the Shopware build/watch commands.
+## Not a command itself -- the leading dot hides it from `ddev help`.
+
+set -euo pipefail
+
+# A directory counts as a Shopware root when it has a composer.json requiring a
+# Shopware package. Guessing without this check silently builds the wrong tree.
+is_shopware_root() {
+    local dir="$1"
+
+    [[ -n "$dir" && -f "$dir/composer.json" ]] || return 1
+
+    grep -qE '"shopware/(core|platform|production|administration|storefront)"' \
+        "$dir/composer.json"
+}
+
+# Shopware project root inside the web container.
+#
+# Resolution order:
+#   1. SHOPWARE_PROJECT_ROOT -- explicit override via .ddev/.env.shopware
+#   2. the current working directory, or any parent of it -- covers users who
+#      `cd` into the shop themselves instead of setting `working_dir`
+#   3. DDEV_COMPOSER_ROOT    -- set when config.yaml uses `composer_root`
+#   4. the directory above DDEV_DOCROOT (e.g. shopware/public -> shopware)
+#   5. /var/www/html         -- Shopware sits in the project root
+#   6. a one-level scan of /var/www/html/* -- last resort for layouts where
+#      nothing above points at the shop
+#
+# Every candidate except the explicit override must look like a Shopware root.
+resolve_shopware_root() {
+    if [[ -n "${SHOPWARE_PROJECT_ROOT:-}" ]]; then
+        echo "$SHOPWARE_PROJECT_ROOT"
+        return 0
+    fi
+
+    local candidate
+
+    # Walk up from wherever the user invoked the command.
+    candidate="$PWD"
+    while [[ "$candidate" == /var/www/html?* ]]; do
+        if is_shopware_root "$candidate"; then
+            echo "$candidate"
+            return 0
+        fi
+        candidate="$(dirname "$candidate")"
+    done
+
+    if is_shopware_root "${DDEV_COMPOSER_ROOT:-}"; then
+        echo "$DDEV_COMPOSER_ROOT"
+        return 0
+    fi
+
+    local docroot="${DDEV_DOCROOT:-}"
+    if [[ -n "$docroot" && "$docroot" == */* ]]; then
+        candidate="/var/www/html/${docroot%/*}"
+        if is_shopware_root "$candidate"; then
+            echo "$candidate"
+            return 0
+        fi
+    fi
+
+    if is_shopware_root "/var/www/html"; then
+        echo "/var/www/html"
+        return 0
+    fi
+
+    for candidate in /var/www/html/*/; do
+        candidate="${candidate%/}"
+        if is_shopware_root "$candidate"; then
+            echo "$candidate"
+            return 0
+        fi
+    done
+
+    return 1
+}
+
+COMMAND="${1:-}"
+
+if [[ -z "$COMMAND" ]]; then
+    echo "Missing Shopware CLI command."
+    exit 1
+fi
+
+shift
+
+if ! command -v shopware-cli >/dev/null 2>&1; then
+    echo "shopware-cli is not installed in the web container."
+    echo
+    echo "The ddev-shopware add-on installs it via .ddev/web-build/Dockerfile.shopware."
+    echo "Run 'ddev restart' (or 'ddev debug rebuild -s web') to build the image."
+    exit 1
+fi
+
+if ! SHOPWARE_ROOT="$(resolve_shopware_root)"; then
+    echo "Could not locate a Shopware installation inside the web container."
+    echo
+    echo "Looked for a composer.json requiring a shopware/* package, starting at"
+    echo "the current directory ($PWD) and walking up."
+    echo
+    echo "Set the path explicitly:"
+    echo "  ddev dotenv set .ddev/.env.shopware --shopware-project-root=/var/www/html/shopware"
+    echo "  ddev restart"
+    exit 1
+fi
+
+if [[ ! -d "$SHOPWARE_ROOT" ]]; then
+    echo "Shopware project root does not exist: $SHOPWARE_ROOT"
+    echo
+    echo "It is set via SHOPWARE_PROJECT_ROOT. Fix it with:"
+    echo "  ddev dotenv set .ddev/.env.shopware --shopware-project-root=/var/www/html/shopware"
+    echo "  ddev restart"
+    exit 1
+fi
+
+cd "$SHOPWARE_ROOT"
+
+MODE="${1:-}"
+
+case "$MODE" in
+    static)
+        exec shopware-cli project "$COMMAND" \
+            --only-custom-static-extensions
+        ;;
+
+    plugin)
+        shift
+
+        if [[ $# -eq 0 ]]; then
+            echo "Missing plugin name."
+            echo
+            echo "Usage:"
+            echo "  $COMMAND plugin PluginA"
+            echo "  $COMMAND plugin PluginA PluginB"
+            exit 1
+        fi
+
+        PLUGINS=$(IFS=,; echo "$*")
+
+        exec shopware-cli project "$COMMAND" \
+            --only-extensions "$PLUGINS"
+        ;;
+
+    "")
+        exec shopware-cli project "$COMMAND"
+        ;;
+
+    *)
+        echo "Unknown mode: $MODE"
+        echo
+        echo "Usage:"
+        echo "  $COMMAND"
+        echo "  $COMMAND static"
+        echo "  $COMMAND plugin PluginA [PluginB ...]"
+        exit 1
+        ;;
+esac

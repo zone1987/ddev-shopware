@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+#ddev-generated
+
+## Description: Start Shopware Administration watcher
+## Usage: admin-watch [static|plugin] [plugins...]
+## Example: "ddev admin-watch" or "ddev admin-watch static" or "ddev admin-watch plugin SwagPluginA"
+
+exec "$(dirname "$0")/.shopware-cli-command" admin-watch "$@"

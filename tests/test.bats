@@ -15,7 +15,6 @@
 setup() {
   set -eu -o pipefail
 
-  # Override this variable for your add-on:
   export GITHUB_REPO=zone1987/ddev-shopware
 
   TEST_BREW_PREFIX="$(brew --prefix 2>/dev/null || true)"
@@ -32,24 +31,64 @@ setup() {
   export DDEV_NO_INSTRUMENTATION=true
   ddev delete -Oy "${PROJNAME}" >/dev/null 2>&1 || true
   cd "${TESTDIR}"
-  run ddev config --project-name="${PROJNAME}" --project-tld=ddev.site
+
+  # A minimal Shopware-shaped project: the commands locate the shop by looking
+  # for a composer.json that requires a shopware/* package.
+  mkdir -p shopware/public
+  cat > shopware/composer.json <<'EOF'
+{
+  "name": "test/shopware",
+  "require": {
+    "shopware/core": "6.7.*"
+  }
+}
+EOF
+
+  run ddev config --project-name="${PROJNAME}" --project-tld=ddev.site --docroot=shopware/public
   assert_success
   run ddev start -y
   assert_success
 }
 
 health_checks() {
-  # Do something useful here that verifies the add-on
-
-  # You can check for specific information in headers:
-  # run curl -sfI https://${PROJNAME}.ddev.site
-  # assert_output --partial "HTTP/2 200"
-  # assert_output --partial "test_header"
-
-  # Or check if some command gives expected output:
-  DDEV_DEBUG=true run ddev launch
+  # shopware-cli must be built into the web image.
+  run ddev exec 'command -v shopware-cli'
   assert_success
-  assert_output --partial "FULLURL https://${PROJNAME}.ddev.site"
+
+  # Deployer ships alongside it.
+  run ddev exec 'command -v deployer'
+  assert_success
+
+  # The commands are registered and documented.
+  run ddev build --help
+  assert_success
+  run ddev watch --help
+  assert_success
+  run ddev admin-build --help
+  assert_success
+  run ddev admin-watch --help
+  assert_success
+  run ddev storefront-build --help
+  assert_success
+  run ddev storefront-watch --help
+  assert_success
+
+  # The internal helper stays out of the command list.
+  run ddev help
+  assert_success
+  refute_output --partial "shopware-cli-command"
+
+  # The watcher ports are published through ddev-router.
+  run ddev describe
+  assert_success
+  assert_output --partial "5173"
+  assert_output --partial "9998"
+
+  # The shop is located even though neither working_dir nor composer_root is set,
+  # and an unknown scope is rejected rather than silently ignored.
+  run ddev exec '.ddev/commands/web/.shopware-cli-command admin-build bogus-mode'
+  assert_failure
+  assert_output --partial "Unknown mode: bogus-mode"
 }
 
 teardown() {

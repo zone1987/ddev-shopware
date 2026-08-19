@@ -1,0 +1,15 @@
+#ddev-generated
+# Installs the tooling the Shopware build/watch commands rely on.
+# DDEV appends this fragment after its own `FROM $BASE_IMAGE`.
+
+# shopware-cli -- powers `ddev build`, `ddev watch` and friends.
+# Package repository provided by FriendsOfShopware.
+RUN curl -1sLf 'https://dl.cloudsmith.io/public/friendsofshopware/stable/setup.deb.sh' | bash \
+    && apt-get install -y --no-install-recommends shopware-cli \
+    && rm -rf /var/lib/apt/lists/*
+
+# Deployer -- optional deployment tool, pinned so builds stay reproducible.
+ARG DEPLOYER_VERSION=7.5.12
+RUN curl -fsSL "https://github.com/deployphp/deployer/releases/download/v${DEPLOYER_VERSION}/deployer.phar" \
+        -o /usr/local/bin/deployer \
+    && chmod +x /usr/local/bin/deployer

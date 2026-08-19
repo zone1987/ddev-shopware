@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+#ddev-generated
+
+## Description: Build Shopware Administration
+## Usage: admin-build [static|plugin] [plugins...]
+## Example: "ddev admin-build" or "ddev admin-build static" or "ddev admin-build plugin SwagPluginA"
+
+exec "$(dirname "$0")/.shopware-cli-command" admin-build "$@"

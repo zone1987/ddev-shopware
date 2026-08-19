@@ -1,0 +1,98 @@
+#!/usr/bin/env bash
+#ddev-generated
+
+## Description: Start Shopware Administration and Storefront watcher in parallel
+## Usage: watch [static|plugin] [plugins...]
+## Example: "ddev watch" or "ddev watch static" or "ddev watch plugin SwagPluginA"
+
+set -uo pipefail
+
+SCRIPT_DIR="$(dirname "$0")"
+
+# Ports the watchers listen on inside the container.
+# Keep in sync with `web_extra_exposed_ports` in .ddev/config.shopware.yaml.
+ADMIN_PORT="${PORT:-5173}"
+STOREFRONT_PORT="${SHOPWARE_STOREFRONT_PORT:-9998}"
+
+ADMIN_PID=""
+URL_WATCHER_PID=""
+
+cleanup() {
+    trap - EXIT INT TERM
+
+    if [[ -n "$URL_WATCHER_PID" ]]; then
+        kill "$URL_WATCHER_PID" 2>/dev/null || true
+        wait "$URL_WATCHER_PID" 2>/dev/null || true
+    fi
+
+    if [[ -n "$ADMIN_PID" ]]; then
+        kill "$ADMIN_PID" 2>/dev/null || true
+        wait "$ADMIN_PID" 2>/dev/null || true
+    fi
+}
+
+trap cleanup EXIT INT TERM
+
+#
+# Administration watcher
+#
+# Runs in background because it does not need interactive terminal input.
+#
+"$SCRIPT_DIR/admin-watch" "$@" &
+ADMIN_PID=$!
+
+#
+# URL output
+#
+# Wait until both development servers are actually listening.
+# This runs independently and does not interfere with the Storefront TTY.
+#
+(
+    ADMIN_READY=false
+    STOREFRONT_READY=false
+
+    while true; do
+        if (echo > "/dev/tcp/127.0.0.1/${ADMIN_PORT}") >/dev/null 2>&1; then
+            ADMIN_READY=true
+        fi
+
+        if (echo > "/dev/tcp/127.0.0.1/${STOREFRONT_PORT}") >/dev/null 2>&1; then
+            STOREFRONT_READY=true
+        fi
+
+        if [[ "$ADMIN_READY" == true && "$STOREFRONT_READY" == true ]]; then
+            break
+        fi
+
+        sleep 1
+    done
+
+    # Give the Storefront watcher a moment to finish its own startup output.
+    sleep 1
+
+    echo
+    echo "────────────────────────────────────────────────────────────"
+    echo " Shopware Development URLs"
+    echo "────────────────────────────────────────────────────────────"
+    printf " Administration: \033[1;36m%s:%s\033[0m\n" "$DDEV_PRIMARY_URL" "$ADMIN_PORT"
+    printf " Storefront:     \033[1;36m%s:%s\033[0m\n" "$DDEV_PRIMARY_URL" "$STOREFRONT_PORT"
+    echo "────────────────────────────────────────────────────────────"
+    echo
+) &
+
+URL_WATCHER_PID=$!
+
+#
+# Storefront watcher
+#
+# IMPORTANT:
+# Must run in foreground so Shopware CLI keeps its interactive TTY.
+# Theme and sales-channel/domain selection will therefore work normally.
+#
+"$SCRIPT_DIR/storefront-watch" "$@"
+
+STOREFRONT_STATUS=$?
+
+cleanup
+
+exit "$STOREFRONT_STATUS"

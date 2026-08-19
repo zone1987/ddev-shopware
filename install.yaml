@@ -1,6 +1,41 @@
+# Details about the install.yaml file are at https://ddev.readthedocs.io/en/stable/users/extend/additional-services/#sections-and-features-of-ddev-get-add-on-installyaml
+
 name: shopware
 
-project_files:
-  - docker-compose.shopware.yaml
+# pre_install_actions - list of actions to run before installing the addon.
+pre_install_actions: []
 
+# list of files and directories that are copied into the project .ddev directory.
+# Each file contains #ddev-generated so it can be replaced by a later `ddev add-on get`
+# if it hasn't been modified by the user.
+project_files:
+  - web-build/Dockerfile.shopware
+  - config.shopware.yaml
+  - commands/web/.shopware-cli-command
+  - commands/web/admin-build
+  - commands/web/admin-watch
+  - commands/web/storefront-build
+  - commands/web/storefront-watch
+  - commands/web/build
+  - commands/web/watch
+
+# List of files and directories that are copied into the global .ddev directory.
+global_files: []
+
+# Version constraint for DDEV that will be validated against the running DDEV executable
+# and prevent add-on from being installed if it doesn't validate.
 ddev_version_constraint: '>= v1.24.10'
+
+# List of add-on names that this add-on depends on.
+dependencies: []
+
+# post_install_actions are executed in the context of the target project's .ddev directory.
+post_install_actions:
+  - |
+    #ddev-description:Show next steps for Shopware
+    echo "Shopware add-on installed."
+    echo "1. Run 'ddev restart' -- this builds shopware-cli into the web image and opens the watcher ports."
+    echo "2. Build with 'ddev build', or start the watchers with 'ddev watch'."
+    echo "3. If Shopware does not live in the project root and is not your composer_root, set it:"
+    echo "   ddev dotenv set .ddev/.env.shopware --shopware-project-root=/var/www/html/shopware"
+    echo "   ddev restart"
